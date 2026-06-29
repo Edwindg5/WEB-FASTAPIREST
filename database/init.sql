@@ -154,8 +154,50 @@ CREATE TABLE IF NOT EXISTS audit_log (
     INDEX idx_audit_timestamp (created_at)
 );
 
+-- Campo telefono cifrado en usuarios
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono VARCHAR(512);
+
+-- Columnas ESP32 para sensores (agregar si no existen)
+ALTER TABLE sensores ADD COLUMN IF NOT EXISTS mac_address VARCHAR(17) UNIQUE;
+ALTER TABLE sensores ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) DEFAULT 'ambos';
+ALTER TABLE sensores ADD COLUMN IF NOT EXISTS modelo VARCHAR(100);
+ALTER TABLE sensores ADD COLUMN IF NOT EXISTS id_cola_mqtt VARCHAR(255);
+ALTER TABLE sensores ADD COLUMN IF NOT EXISTS provisioning_token VARCHAR(36) UNIQUE;
+ALTER TABLE sensores ADD COLUMN IF NOT EXISTS token_usado BOOLEAN DEFAULT false;
+ALTER TABLE sensores ADD COLUMN IF NOT EXISTS lote_id INTEGER REFERENCES lotes_cafe(id);
+ALTER TABLE sensores ALTER COLUMN estado TYPE VARCHAR(50);
+
+-- Tabla: pagos
+CREATE TABLE IF NOT EXISTS pagos (
+    id SERIAL PRIMARY KEY,
+    id_usuario INTEGER NOT NULL REFERENCES usuarios(id),
+    plan VARCHAR(50) NOT NULL,
+    monto DECIMAL(10, 2) NOT NULL,
+    moneda VARCHAR(3) DEFAULT 'MXN',
+    estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+    mp_preference_id VARCHAR(255),
+    mp_payment_id VARCHAR(255),
+    detalle_pago JSONB,
+    fecha_pago TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla: suscripciones
+CREATE TABLE IF NOT EXISTS suscripciones (
+    id SERIAL PRIMARY KEY,
+    id_usuario INTEGER NOT NULL UNIQUE REFERENCES usuarios(id),
+    plan VARCHAR(50) NOT NULL DEFAULT 'prueba',
+    estado VARCHAR(20) NOT NULL DEFAULT 'prueba',
+    fecha_inicio TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    fecha_fin TIMESTAMP,
+    lotes_max INTEGER DEFAULT 1,
+    id_pago INTEGER REFERENCES pagos(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Índices adicionales para performance
-CREATE INDEX idx_lotes_created_by ON lotes_cafe(created_by);
+CREATE INDEX IF NOT EXISTS idx_lotes_created_by ON lotes_cafe(created_by);
 CREATE INDEX idx_lecturas_sensor ON lecturas_ambientales(sensor_id);
 CREATE INDEX idx_predicciones_modelo ON predicciones(modelo_id);
 

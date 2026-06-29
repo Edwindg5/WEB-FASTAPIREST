@@ -15,6 +15,7 @@ class UsuarioBase(BaseModel):
 class UsuarioCreate(UsuarioBase):
     """Schema para crear un usuario."""
     contrasena: str = Field(..., min_length=8, max_length=255, description="Contraseña (mín. 8 caracteres)")
+    telefono: Optional[str] = Field(None, max_length=20, description="Teléfono (se cifra con AES-256)")
 
 
 class UsuarioUpdate(BaseModel):

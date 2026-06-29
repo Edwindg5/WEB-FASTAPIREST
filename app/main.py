@@ -6,21 +6,28 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.logging import logger
 from app.api.middleware.audit import AuditMiddleware
+from app.api.middleware.encryption_middleware import EncryptionMiddleware
 from app.api.middleware.exception_handlers import setup_exception_handlers
 from app.api.v1.routers import auth, usuarios
+from app.api.v1.routers import (
+    admin_usuarios_router,
+    admin_sensores_router,
+    admin_dashboard_router,
+    admin_reportes_router,
+    admin_auditoria_router,
+    suscripcion_router,
+    pago_router,
+    seguridad_router,
+)
 
-# Simulación de inicialización
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Maneja inicio y cierre de la aplicación."""
-    # Startup
-    logger.info("🚀 Iniciando API Web - Sistema Monitoreo Café")
+    logger.info("Iniciando API Web - Sistema Monitoreo Café")
     yield
-    # Shutdown
-    logger.info("🛑 Cerrando aplicación")
+    logger.info("Cerrando aplicación")
 
 
-# Crear aplicación FastAPI
 app = FastAPI(
     title=settings.app_title,
     description=settings.app_description,
@@ -31,7 +38,6 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# Configurar CORS - Solo desde el frontend Angular
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_url],
@@ -40,20 +46,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware de auditoría
+app.add_middleware(EncryptionMiddleware)
 app.add_middleware(AuditMiddleware)
 
-# Configurar exception handlers
 setup_exception_handlers(app)
 
-# Incluir routers
+# Routers existentes
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(usuarios.router, prefix="/api/v1")
 
-# Health check
+# Admin — Parte 1
+app.include_router(admin_usuarios_router.router, prefix="/api/v1")
+app.include_router(admin_sensores_router.router, prefix="/api/v1")
+
+# Admin — Parte 2
+app.include_router(admin_dashboard_router.router, prefix="/api/v1")
+app.include_router(admin_reportes_router.router, prefix="/api/v1")
+app.include_router(admin_auditoria_router.router, prefix="/api/v1")
+
+# Pagos y suscripciones — Parte 3
+app.include_router(suscripcion_router.router, prefix="/api/v1")
+app.include_router(pago_router.router, prefix="/api/v1")
+
+# Seguridad / cifrado — Parte 4
+app.include_router(seguridad_router.router, prefix="/api/v1")
+
+
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Endpoint para verificar que la API está corriendo."""
     return {
         "status": "ok",
         "version": settings.app_version,
@@ -63,7 +83,6 @@ async def health_check():
 
 @app.get("/", tags=["Root"])
 async def root():
-    """Endpoint raíz con información de la API."""
     return {
         "titulo": settings.app_title,
         "descripcion": settings.app_description,

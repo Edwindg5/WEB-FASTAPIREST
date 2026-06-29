@@ -21,27 +21,22 @@ class AuthUseCase:
         self.usuario_repo = usuario_repo
 
     async def registrar_usuario(
-        self, correo: str, nombre_completo: str, contrasena: str, rol: str = "supervisor"
+        self,
+        correo: str,
+        nombre_completo: str,
+        contrasena: str,
+        rol: str = "supervisor",
+        telefono: Optional[str] = None,
     ) -> Usuario:
-        """Registra un nuevo usuario en el sistema.
-        
-        Args:
-            correo: Email del usuario.
-            nombre_completo: Nombre completo.
-            contrasena: Contraseña en texto plano (se hará hash).
-            rol: Rol del usuario (default: supervisor).
-            
-        Returns:
-            Usuario creado.
-            
-        Raises:
-            ValueError: Si el correo ya existe.
-        """
-        # Verificar que no exista
+        """Registra un nuevo usuario. Cifra el teléfono con AES-256 antes de guardar."""
         if await self.usuario_repo.usuario_exists(correo):
             raise ValueError(f"El usuario con correo '{correo}' ya existe")
 
-        # Crear entidad de dominio
+        telefono_cifrado = None
+        if telefono:
+            from app.core.encryption import encryption_service
+            telefono_cifrado = encryption_service.encrypt(telefono)
+
         usuario = Usuario(
             correo=correo,
             nombre_completo=nombre_completo,
@@ -50,8 +45,7 @@ class AuthUseCase:
             contrasena_hash=hash_password(contrasena),
         )
 
-        # Persistir en BD
-        usuario_creado = await self.usuario_repo.create(usuario)
+        usuario_creado = await self.usuario_repo.create(usuario, telefono_cifrado=telefono_cifrado)
         return usuario_creado
 
     async def login(self, correo: str, contrasena: str) -> Tuple[str, str, Usuario]:

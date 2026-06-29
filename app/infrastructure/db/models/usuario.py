@@ -15,6 +15,7 @@ class UsuarioModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     correo = Column(String(255), unique=True, nullable=False, index=True)
     nombre_completo = Column(String(255), nullable=False)
+    telefono = Column(String(512), nullable=True)  # almacenado cifrado AES-256
     rol = Column(Enum(RolUsuario), default=RolUsuario.SUPERVISOR, nullable=False)
     estado = Column(Enum(EstadoUsuario), default=EstadoUsuario.ACTIVO, nullable=False)
     contrasena_hash = Column(String(255), nullable=False)

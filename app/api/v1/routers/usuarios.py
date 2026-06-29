@@ -63,6 +63,7 @@ async def crear_usuario(
             nombre_completo=usuario_create.nombre_completo,
             contrasena=usuario_create.contrasena,
             rol=usuario_create.rol.value,
+            telefono=usuario_create.telefono,
         )
 
         logger.info(f"Usuario creado: {usuario.correo} por admin: {current_user.get('correo')}")

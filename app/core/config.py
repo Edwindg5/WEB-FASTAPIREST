@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     smtp_user: Optional[str] = None
     smtp_password: Optional[str] = None
 
+    # Mercado Pago
+    mp_access_token: Optional[str] = None
+    mp_webhook_secret: Optional[str] = None
+
+    # Cifrado AES-256
+    encryption_key: Optional[str] = None
+
     class Config:
         env_file = ".env"
         case_sensitive = False

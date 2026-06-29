@@ -19,17 +19,18 @@ class UsuarioRepository(IUsuarioRepository):
         """
         self.db = db
 
-    async def create(self, usuario: Usuario) -> Usuario:
-        """Crea un nuevo usuario en la BD."""
+    async def create(self, usuario: Usuario, telefono_cifrado: str = None) -> Usuario:
+        """Crea un nuevo usuario en la BD. telefono_cifrado ya viene encriptado."""
         db_usuario = UsuarioModel(
             correo=usuario.correo,
             nombre_completo=usuario.nombre_completo,
             rol=usuario.rol,
             estado=usuario.estado,
             contrasena_hash=usuario.contrasena_hash,
+            telefono=telefono_cifrado,
         )
         self.db.add(db_usuario)
-        await self.db.flush()  # Obtener el ID asignado
+        await self.db.flush()
         usuario.id = db_usuario.id
         return usuario
 
