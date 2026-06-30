@@ -1,131 +1,104 @@
-"""Repositorio SQLAlchemy para Usuario."""
+"""Repositorio SQLAlchemy para Usuario — usa columnas reales de PostgreSQL."""
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.application.interfaces.usuario_repository import IUsuarioRepository
 from app.domain.entities.usuario import Usuario, RolUsuario, EstadoUsuario
 from app.infrastructure.db.models.usuario import UsuarioModel
-from app.core.security import hash_password
 
 
 class UsuarioRepository(IUsuarioRepository):
-    """Implementación concreta del repositorio de Usuario con SQLAlchemy."""
 
     def __init__(self, db: AsyncSession):
-        """Inicializa el repositorio con una sesión de BD.
-        
-        Args:
-            db: Sesión SQLAlchemy asíncrona.
-        """
         self.db = db
 
-    async def create(self, usuario: Usuario, telefono_cifrado: str = None) -> Usuario:
-        """Crea un nuevo usuario en la BD. telefono_cifrado ya viene encriptado."""
+    async def create(self, usuario: Usuario, **kwargs) -> Usuario:
         db_usuario = UsuarioModel(
-            correo=usuario.correo,
-            nombre_completo=usuario.nombre_completo,
-            rol=usuario.rol,
-            estado=usuario.estado,
-            contrasena_hash=usuario.contrasena_hash,
-            telefono=telefono_cifrado,
+            nombre=usuario.nombre,
+            email=usuario.email,
+            password_hash=usuario.password_hash,
+            rol=usuario.rol.value if hasattr(usuario.rol, "value") else usuario.rol,
+            estado=usuario.estado.value if hasattr(usuario.estado, "value") else usuario.estado,
+            telefono=usuario.telefono,
         )
         self.db.add(db_usuario)
         await self.db.flush()
-        usuario.id = db_usuario.id
+        usuario.id_usuario = db_usuario.id_usuario
         return usuario
 
     async def get_by_id(self, id: int) -> Optional[Usuario]:
-        """Obtiene un usuario por ID."""
         result = await self.db.execute(
-            select(UsuarioModel).where(UsuarioModel.id == id)
+            select(UsuarioModel).where(UsuarioModel.id_usuario == id)
         )
-        db_usuario = result.scalar_one_or_none()
-        return self._map_to_domain(db_usuario) if db_usuario else None
+        db_u = result.scalar_one_or_none()
+        return self._map_to_domain(db_u) if db_u else None
 
-    async def get_by_correo(self, correo: str) -> Optional[Usuario]:
-        """Obtiene un usuario por correo."""
+    async def get_by_email(self, email: str) -> Optional[Usuario]:
         result = await self.db.execute(
-            select(UsuarioModel).where(UsuarioModel.correo == correo)
+            select(UsuarioModel).where(UsuarioModel.email == email)
         )
-        db_usuario = result.scalar_one_or_none()
-        return self._map_to_domain(db_usuario) if db_usuario else None
+        db_u = result.scalar_one_or_none()
+        return self._map_to_domain(db_u) if db_u else None
 
     async def get_all(self, skip: int = 0, limit: int = 10) -> List[Usuario]:
-        """Obtiene todos los usuarios con paginación."""
         result = await self.db.execute(
-            select(UsuarioModel)
-            .offset(skip)
-            .limit(limit)
+            select(UsuarioModel).offset(skip).limit(limit)
         )
-        db_usuarios = result.scalars().all()
-        return [self._map_to_domain(u) for u in db_usuarios]
+        return [self._map_to_domain(u) for u in result.scalars().all()]
 
     async def update(self, id: int, usuario: Usuario) -> Optional[Usuario]:
-        """Actualiza un usuario existente."""
         result = await self.db.execute(
-            select(UsuarioModel).where(UsuarioModel.id == id)
+            select(UsuarioModel).where(UsuarioModel.id_usuario == id)
         )
-        db_usuario = result.scalar_one_or_none()
-        
-        if not db_usuario:
+        db_u = result.scalar_one_or_none()
+        if not db_u:
             return None
 
-        # Actualizar solo los campos que vienen con valores
-        if usuario.nombre_completo:
-            db_usuario.nombre_completo = usuario.nombre_completo
+        if usuario.nombre:
+            db_u.nombre = usuario.nombre
         if usuario.rol:
-            db_usuario.rol = usuario.rol
+            db_u.rol = usuario.rol.value if hasattr(usuario.rol, "value") else usuario.rol
         if usuario.estado:
-            db_usuario.estado = usuario.estado
-        if usuario.contrasena_hash:
-            db_usuario.contrasena_hash = usuario.contrasena_hash
+            db_u.estado = usuario.estado.value if hasattr(usuario.estado, "value") else usuario.estado
+        if usuario.password_hash:
+            db_u.password_hash = usuario.password_hash
 
         await self.db.flush()
-        return self._map_to_domain(db_usuario)
+        return self._map_to_domain(db_u)
 
     async def delete(self, id: int) -> bool:
-        """Elimina un usuario (borrado lógico o físico)."""
         result = await self.db.execute(
-            select(UsuarioModel).where(UsuarioModel.id == id)
+            select(UsuarioModel).where(UsuarioModel.id_usuario == id)
         )
-        db_usuario = result.scalar_one_or_none()
-        
-        if not db_usuario:
+        db_u = result.scalar_one_or_none()
+        if not db_u:
             return False
-
-        await self.db.delete(db_usuario)
+        await self.db.delete(db_u)
         return True
 
-    async def usuario_exists(self, correo: str) -> bool:
-        """Verifica si un usuario existe por correo."""
+    async def usuario_exists(self, email: str) -> bool:
         result = await self.db.execute(
-            select(func.count()).select_from(UsuarioModel)
-            .where(UsuarioModel.correo == correo)
+            select(func.count()).select_from(UsuarioModel).where(UsuarioModel.email == email)
         )
-        count = result.scalar()
-        return count > 0
+        return (result.scalar() or 0) > 0
 
     async def get_count(self) -> int:
-        """Obtiene el total de usuarios en la BD."""
         result = await self.db.execute(
             select(func.count()).select_from(UsuarioModel)
         )
-        return result.scalar()
+        return result.scalar() or 0
 
     @staticmethod
-    def _map_to_domain(db_usuario: UsuarioModel) -> Usuario:
-        """Mapea un modelo de BD a la entidad de dominio."""
-        if not db_usuario:
+    def _map_to_domain(db_u: UsuarioModel) -> Usuario:
+        if not db_u:
             return None
-        
         return Usuario(
-            id=db_usuario.id,
-            correo=db_usuario.correo,
-            nombre_completo=db_usuario.nombre_completo,
-            rol=db_usuario.rol,
-            estado=db_usuario.estado,
-            contrasena_hash=db_usuario.contrasena_hash,
-            created_at=db_usuario.created_at,
-            updated_at=db_usuario.updated_at,
-            ultimo_login=db_usuario.ultimo_login,
+            id_usuario=db_u.id_usuario,
+            email=db_u.email,
+            nombre=db_u.nombre,
+            rol=db_u.rol,
+            estado=db_u.estado,
+            password_hash=db_u.password_hash,
+            telefono=db_u.telefono,
+            fecha_registro=db_u.fecha_registro,
         )

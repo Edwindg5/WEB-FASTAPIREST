@@ -26,7 +26,7 @@ class EncryptionMiddleware(BaseHTTPMiddleware):
             return response
 
         role = self._extract_role(request)
-        if role == "admin":
+        if role == "administrador":
             return response
 
         return await self._anonymize_response(response)
@@ -38,7 +38,7 @@ class EncryptionMiddleware(BaseHTTPMiddleware):
         try:
             from app.core.security import decode_token
             payload = decode_token(auth[7:])
-            return payload.get("role", "")
+            return payload.get("role", "")  # "administrador" | "supervisor" | "productor"
         except Exception:
             return ""
 

@@ -1,8 +1,4 @@
-"""Entidad de Dominio: Usuario.
-
-Entidad pura sin dependencias de frameworks.
-Contiene solo la lógica de negocio relacionada a usuarios.
-"""
+"""Entidad de Dominio: Usuario."""
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
@@ -10,49 +6,36 @@ from enum import Enum
 
 
 class RolUsuario(str, Enum):
-    """Roles de usuario disponibles."""
-    ADMIN = "admin"
+    ADMINISTRADOR = "administrador"
     SUPERVISOR = "supervisor"
-    TECNICO = "tecnico"
+    PRODUCTOR = "productor"
 
 
 class EstadoUsuario(str, Enum):
-    """Estados posibles de un usuario."""
     ACTIVO = "activo"
     INACTIVO = "inactivo"
-    BLOQUEADO = "bloqueado"
+    SUSPENDIDO = "suspendido"
 
 
 @dataclass
 class Usuario:
-    """Entidad de Usuario.
-    
-    Representa un usuario del sistema con sus datos básicos.
-    Nota: Esta es una entidad de DOMINIO, no vinculada a frameworks.
-    """
-    
-    id: Optional[int] = None
-    correo: str = ""
-    nombre_completo: str = ""
-    rol: RolUsuario = RolUsuario.SUPERVISOR
+    id_usuario: Optional[int] = None
+    email: str = ""
+    nombre: str = ""
+    rol: RolUsuario = RolUsuario.PRODUCTOR
     estado: EstadoUsuario = EstadoUsuario.ACTIVO
-    contrasena_hash: str = ""  # No almacenar texto plano
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    ultimo_login: Optional[datetime] = None
-    
+    password_hash: str = ""
+    telefono: Optional[str] = None
+    fecha_registro: Optional[datetime] = None
+
     def is_admin(self) -> bool:
-        """Verifica si el usuario es administrador."""
-        return self.rol == RolUsuario.ADMIN
-    
+        return self.rol == RolUsuario.ADMINISTRADOR
+
     def is_activo(self) -> bool:
-        """Verifica si el usuario está activo."""
         return self.estado == EstadoUsuario.ACTIVO
-    
+
     def puede_leer_lotes(self) -> bool:
-        """Verifica si puede leer lotes."""
-        return self.is_activo() and self.rol in [RolUsuario.ADMIN, RolUsuario.SUPERVISOR]
-    
+        return self.is_activo()
+
     def puede_modificar_lotes(self) -> bool:
-        """Verifica si puede modificar lotes (solo admins)."""
-        return self.is_activo() and self.is_admin()
+        return self.is_activo() and self.rol in (RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)

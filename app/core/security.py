@@ -121,7 +121,7 @@ async def get_current_admin_user(
         HTTPException: Si no es administrador.
     """
     role = current_user.get("role")
-    if role != "admin":
+    if role != "administrador":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Se requieren permisos de administrador",

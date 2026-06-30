@@ -1,21 +1,19 @@
-"""Modelo SQLAlchemy para Audit Log."""
+"""Modelo SQLAlchemy para Audit Log — columnas reales de PostgreSQL."""
 from sqlalchemy import Column, Integer, String, DateTime, JSON, ForeignKey
-from datetime import datetime
 from app.infrastructure.db.models.usuario import Base
 
 
 class AuditLogModel(Base):
     __tablename__ = "audit_log"
 
-    id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    id_log = Column(Integer, primary_key=True, index=True)
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
     accion = Column(String(255), nullable=False)
-    entidad_tipo = Column(String(50), nullable=True)
-    entidad_id = Column(Integer, nullable=True)
-    valores_anteriores = Column(JSON, nullable=True)
-    valores_nuevos = Column(JSON, nullable=True)
-    ip_cliente = Column(String(50), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    entidad = Column(String(100), nullable=True)
+    id_entidad = Column(Integer, nullable=True)
+    detalles = Column(JSON, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    fecha_hora = Column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<AuditLogModel(id={self.id}, accion={self.accion})>"
+        return f"<AuditLogModel(id_log={self.id_log}, accion={self.accion})>"

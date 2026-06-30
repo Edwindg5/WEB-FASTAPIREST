@@ -1,24 +1,25 @@
-"""Modelo SQLAlchemy para Lote de Café."""
-from sqlalchemy import Column, Integer, String, DateTime, Date, Numeric, ForeignKey
-from datetime import datetime
+"""Modelo SQLAlchemy para Lote de Café — columnas reales de PostgreSQL."""
+from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey
 from app.infrastructure.db.models.usuario import Base
 
 
 class LoteCafeModel(Base):
     __tablename__ = "lotes_cafe"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id_lote = Column(Integer, primary_key=True, index=True)
+    nombre_lote = Column(String(255), nullable=True)
+    variedad = Column(String(100), nullable=True)
+    tipo_proceso = Column(String(50), nullable=True)
+    peso_kg = Column(Numeric(10, 2), nullable=True)
+    ubicacion = Column(String(255), nullable=True)
     codigo_qr = Column(String(255), unique=True, nullable=True)
-    nombre = Column(String(255), nullable=False)
-    estado = Column(String(50), default="en_progreso")
-    fecha_inicio = Column(Date, nullable=False)
-    fecha_fin_estimada = Column(Date, nullable=True)
-    fecha_fin_real = Column(Date, nullable=True)
-    temperatura_objetivo = Column(Numeric(5, 2), nullable=True)
-    humedad_objetivo = Column(Numeric(5, 2), nullable=True)
-    created_by = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    estado = Column(String(50), default="en_proceso")
+    id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
+    id_sensor = Column(Integer, ForeignKey("sensores.id_sensor"), nullable=True)
+    fecha_inicio_secado = Column(DateTime, nullable=True)
+    fecha_fin_secado = Column(DateTime, nullable=True)
+    linked_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
-        return f"<LoteCafeModel(id={self.id}, nombre={self.nombre}, estado={self.estado})>"
+        return f"<LoteCafeModel(id_lote={self.id_lote}, nombre={self.nombre_lote})>"

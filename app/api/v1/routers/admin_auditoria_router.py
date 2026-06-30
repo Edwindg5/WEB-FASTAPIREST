@@ -1,4 +1,4 @@
-"""Router admin — auditoría. Requiere rol=admin."""
+"""Router admin — auditoría. Requiere rol=administrador."""
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -26,23 +26,18 @@ async def listar_auditoria(
     query = select(AuditLogModel)
 
     if id_usuario:
-        query = query.where(AuditLogModel.usuario_id == id_usuario)
+        query = query.where(AuditLogModel.id_usuario == id_usuario)
     if accion:
         query = query.where(AuditLogModel.accion.ilike(f"%{accion}%"))
     if desde:
-        desde_dt = datetime.strptime(desde, "%Y-%m-%d")
-        query = query.where(AuditLogModel.created_at >= desde_dt)
+        query = query.where(AuditLogModel.fecha_hora >= datetime.strptime(desde, "%Y-%m-%d"))
     if hasta:
         hasta_dt = datetime.strptime(hasta, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-        query = query.where(AuditLogModel.created_at <= hasta_dt)
+        query = query.where(AuditLogModel.fecha_hora <= hasta_dt)
 
-    count_q = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(count_q)).scalar_one()
-
+    total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     offset = (page - 1) * limit
-    result = await db.execute(
-        query.order_by(AuditLogModel.created_at.desc()).offset(offset).limit(limit)
-    )
+    result = await db.execute(query.order_by(AuditLogModel.fecha_hora.desc()).offset(offset).limit(limit))
     logs = result.scalars().all()
 
     return {
@@ -51,15 +46,14 @@ async def listar_auditoria(
         "limit": limit,
         "items": [
             {
-                "id": log.id,
-                "usuario_id": log.usuario_id,
+                "id_log": log.id_log,
+                "id_usuario": log.id_usuario,
                 "accion": log.accion,
-                "entidad_tipo": log.entidad_tipo,
-                "entidad_id": log.entidad_id,
-                "valores_anteriores": log.valores_anteriores,
-                "valores_nuevos": log.valores_nuevos,
-                "ip_cliente": log.ip_cliente,
-                "fecha_hora": log.created_at,
+                "entidad": log.entidad,
+                "id_entidad": log.id_entidad,
+                "detalles": log.detalles,
+                "ip_address": log.ip_address,
+                "fecha_hora": log.fecha_hora,
             }
             for log in logs
         ],

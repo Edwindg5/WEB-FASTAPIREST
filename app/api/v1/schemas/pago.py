@@ -14,14 +14,14 @@ class PreferenciaResponse(BaseModel):
 
 
 class PagoResponse(BaseModel):
-    id: int
-    plan: str
+    id_pago: int
+    id_suscripcion: Optional[int] = None
     monto: float
     moneda: str
     estado: str
-    mp_preference_id: Optional[str]
-    mp_payment_id: Optional[str]
-    fecha_pago: datetime
+    mp_preference_id: Optional[str] = None
+    mp_payment_id: Optional[str] = None
+    fecha_pago: Optional[datetime] = None
 
     class Config:
         from_attributes = True

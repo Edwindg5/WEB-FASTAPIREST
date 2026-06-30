@@ -13,7 +13,7 @@ class PlanInfo(BaseModel):
 
 
 class SuscripcionResponse(BaseModel):
-    id: Optional[int] = None
+    id_suscripcion: Optional[int] = None
     plan: str
     estado: str
     fecha_inicio: Optional[datetime] = None

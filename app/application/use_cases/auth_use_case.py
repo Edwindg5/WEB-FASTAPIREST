@@ -1,159 +1,97 @@
 """Casos de uso para autenticación y gestión de usuarios."""
 from typing import Tuple, Optional, Dict, Any, List
-from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.entities.usuario import Usuario, EstadoUsuario
 from app.application.interfaces.usuario_repository import IUsuarioRepository
-from app.infrastructure.db.repositories.usuario_repository import UsuarioRepository
-from app.core.security import (
-    hash_password,
-    verify_password,
-    create_access_token,
-    create_refresh_token,
-)
+from app.core.security import hash_password, verify_password, create_access_token, create_refresh_token
 
 
 class AuthUseCase:
-    """Caso de uso para autenticación (login, registro, etc)."""
 
     def __init__(self, usuario_repo: IUsuarioRepository):
-        """Inicializa con el repositorio de usuario."""
         self.usuario_repo = usuario_repo
 
     async def registrar_usuario(
         self,
-        correo: str,
-        nombre_completo: str,
-        contrasena: str,
-        rol: str = "supervisor",
+        email: str,
+        nombre: str,
+        password: str,
+        rol: str = "productor",
         telefono: Optional[str] = None,
     ) -> Usuario:
-        """Registra un nuevo usuario. Cifra el teléfono con AES-256 antes de guardar."""
-        if await self.usuario_repo.usuario_exists(correo):
-            raise ValueError(f"El usuario con correo '{correo}' ya existe")
-
-        telefono_cifrado = None
-        if telefono:
-            from app.core.encryption import encryption_service
-            telefono_cifrado = encryption_service.encrypt(telefono)
+        if await self.usuario_repo.usuario_exists(email):
+            raise ValueError(f"El usuario con email '{email}' ya existe")
 
         usuario = Usuario(
-            correo=correo,
-            nombre_completo=nombre_completo,
+            email=email,
+            nombre=nombre,
             rol=rol,
             estado=EstadoUsuario.ACTIVO,
-            contrasena_hash=hash_password(contrasena),
+            password_hash=hash_password(password),
+            telefono=telefono,
         )
+        return await self.usuario_repo.create(usuario)
 
-        usuario_creado = await self.usuario_repo.create(usuario, telefono_cifrado=telefono_cifrado)
-        return usuario_creado
-
-    async def login(self, correo: str, contrasena: str) -> Tuple[str, str, Usuario]:
-        """Autentica un usuario y genera tokens JWT.
-        
-        Args:
-            correo: Email del usuario.
-            contrasena: Contraseña en texto plano.
-            
-        Returns:
-            Tupla (access_token, refresh_token, usuario).
-            
-        Raises:
-            ValueError: Si credenciales inválidas o usuario no activo.
-        """
-        # Buscar usuario
-        usuario = await self.usuario_repo.get_by_correo(correo)
+    async def login(self, email: str, password: str) -> Tuple[str, str, Usuario]:
+        usuario = await self.usuario_repo.get_by_email(email)
         if not usuario:
             raise ValueError("Credenciales inválidas")
 
-        # Verificar contraseña
-        if not verify_password(contrasena, usuario.contrasena_hash):
+        if not verify_password(password, usuario.password_hash):
             raise ValueError("Credenciales inválidas")
 
-        # Verificar estado
         if not usuario.is_activo():
-            raise ValueError(f"Usuario {usuario.estado.value}")
+            raise ValueError(f"Usuario {usuario.estado}")
 
-        # Generar tokens
+        rol_value = usuario.rol.value if hasattr(usuario.rol, "value") else str(usuario.rol)
         access_token = create_access_token(
-            data={"sub": str(usuario.id), "correo": usuario.correo, "role": usuario.rol.value}
+            data={"sub": str(usuario.id_usuario), "email": usuario.email, "role": rol_value}
         )
-        refresh_token = create_refresh_token(
-            data={"sub": str(usuario.id)}
-        )
-
+        refresh_token = create_refresh_token(data={"sub": str(usuario.id_usuario)})
         return access_token, refresh_token, usuario
 
-    async def cambiar_contrasena(
-        self, usuario_id: int, contrasena_actual: str, contrasena_nueva: str
+    async def cambiar_password(
+        self, id_usuario: int, password_actual: str, password_nuevo: str
     ) -> bool:
-        """Cambia la contraseña de un usuario.
-        
-        Args:
-            usuario_id: ID del usuario.
-            contrasena_actual: Contraseña actual (verificación).
-            contrasena_nueva: Nueva contraseña.
-            
-        Returns:
-            True si se cambió correctamente.
-            
-        Raises:
-            ValueError: Si contraseña actual es incorrecta.
-        """
-        usuario = await self.usuario_repo.get_by_id(usuario_id)
+        usuario = await self.usuario_repo.get_by_id(id_usuario)
         if not usuario:
-            raise ValueError(f"Usuario no encontrado")
-
-        # Verificar contraseña actual
-        if not verify_password(contrasena_actual, usuario.contrasena_hash):
+            raise ValueError("Usuario no encontrado")
+        if not verify_password(password_actual, usuario.password_hash):
             raise ValueError("Contraseña actual incorrecta")
-
-        # Actualizar contraseña
-        usuario.contrasena_hash = hash_password(contrasena_nueva)
-        updated = await self.usuario_repo.update(usuario_id, usuario)
-
+        usuario.password_hash = hash_password(password_nuevo)
+        updated = await self.usuario_repo.update(id_usuario, usuario)
         return updated is not None
 
 
 class UsuarioUseCase:
-    """Caso de uso para gestión de usuarios (CRUD)."""
 
     def __init__(self, usuario_repo: IUsuarioRepository):
-        """Inicializa con el repositorio de usuario."""
         self.usuario_repo = usuario_repo
 
-    async def obtener_usuario(self, usuario_id: int) -> Optional[Usuario]:
-        """Obtiene los datos de un usuario por ID."""
-        return await self.usuario_repo.get_by_id(usuario_id)
+    async def obtener_usuario(self, id_usuario: int) -> Optional[Usuario]:
+        return await self.usuario_repo.get_by_id(id_usuario)
 
     async def listar_usuarios(self, skip: int = 0, limit: int = 10) -> Tuple[List[Usuario], int]:
-        """Lista todos los usuarios con paginación.
-        
-        Returns:
-            Tupla (lista de usuarios, total de usuarios).
-        """
         usuarios = await self.usuario_repo.get_all(skip, limit)
         total = await self.usuario_repo.get_count()
         return usuarios, total
 
     async def actualizar_usuario(
-        self, usuario_id: int, nombre_completo: Optional[str] = None,
-        rol: Optional[str] = None, estado: Optional[str] = None
+        self,
+        id_usuario: int,
+        nombre: Optional[str] = None,
+        rol: Optional[str] = None,
+        estado: Optional[str] = None,
     ) -> Optional[Usuario]:
-        """Actualiza los datos de un usuario."""
-        usuario = await self.usuario_repo.get_by_id(usuario_id)
+        usuario = await self.usuario_repo.get_by_id(id_usuario)
         if not usuario:
             return None
-
-        if nombre_completo:
-            usuario.nombre_completo = nombre_completo
+        if nombre:
+            usuario.nombre = nombre
         if rol:
             usuario.rol = rol
         if estado:
             usuario.estado = estado
+        return await self.usuario_repo.update(id_usuario, usuario)
 
-        return await self.usuario_repo.update(usuario_id, usuario)
-
-    async def eliminar_usuario(self, usuario_id: int) -> bool:
-        """Elimina un usuario del sistema."""
-        return await self.usuario_repo.delete(usuario_id)
+    async def eliminar_usuario(self, id_usuario: int) -> bool:
+        return await self.usuario_repo.delete(id_usuario)
