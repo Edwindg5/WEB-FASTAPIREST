@@ -42,19 +42,32 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-async def refresh_token(request: RefreshTokenRequest):
+async def refresh_token(
+    request: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
     try:
         payload = decode_token(request.refresh_token)
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
-        new_access_token = create_access_token(data={"sub": payload.get("sub")})
-        return TokenResponse(
-            access_token=new_access_token,
-            refresh_token=request.refresh_token,
-            token_type="bearer",
-        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o expirado") from e
+
+    usuario = await UsuarioRepository(db).get_by_id(int(payload.get("sub")))
+    if not usuario or not usuario.is_activo():
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no encontrado o inactivo")
+
+    rol_value = usuario.rol.value if hasattr(usuario.rol, "value") else str(usuario.rol)
+    new_access_token = create_access_token(
+        data={"sub": str(usuario.id_usuario), "email": usuario.email, "role": rol_value}
+    )
+    return TokenResponse(
+        access_token=new_access_token,
+        refresh_token=request.refresh_token,
+        token_type="bearer",
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
