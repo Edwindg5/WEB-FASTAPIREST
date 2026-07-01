@@ -101,7 +101,14 @@ async def webhook_mercadopago(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    body_bytes = await request.body()
+    try:
+        body_bytes = await request.body()
+        if not body_bytes:
+            return {"status": "ignored", "reason": "empty body"}
+    except Exception as e:
+        from app.core.logging import logger
+        logger.warning(f"Webhook recibido con body inválido o desconexión: {e}")
+        return {"status": "ignored", "reason": "invalid or empty body"}
 
     secret = os.getenv("MP_WEBHOOK_SECRET", "")
     if secret:
