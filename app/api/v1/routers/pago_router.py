@@ -2,7 +2,6 @@
 import asyncio
 import hashlib
 import hmac
-import os
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 
@@ -10,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.logging import logger
 from app.core.security import get_current_user
 from app.infrastructure.db.database import get_db
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/pagos", tags=["Pagos"])
 
 def _get_mp_sdk():
     import mercadopago
-    token = os.getenv("MP_ACCESS_TOKEN", "")
+    token = settings.mp_access_token or ""
     if not token:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -58,9 +58,9 @@ async def crear_preferencia(
         }],
         "metadata": {"id_usuario": id_usuario, "plan": body.plan},
         "back_urls": {
-            "success": f"{os.getenv('BACKEND_URL', 'http://localhost:8000')}/api/v1/pagos/webhook",
-            "failure": f"{os.getenv('FRONTEND_URL', 'http://localhost:4200')}/pago/error",
-            "pending": f"{os.getenv('FRONTEND_URL', 'http://localhost:4200')}/pago/pendiente",
+            "success": f"{settings.backend_url}/api/v1/pagos/webhook",
+            "failure": f"{settings.frontend_url}/pago/error",
+            "pending": f"{settings.frontend_url}/pago/pendiente",
         },
         "auto_return": "approved",
     }
@@ -123,7 +123,7 @@ async def webhook_mercadopago(
         logger.warning(f"Webhook recibido con body inválido o desconexión: {e}")
         return {"status": "ignored", "reason": "invalid or empty body"}
 
-    secret = os.getenv("MP_WEBHOOK_SECRET", "")
+    secret = settings.mp_webhook_secret or ""
     if secret:
         mp_signature = request.headers.get("x-signature", "")
         expected = hmac.new(secret.encode(), body_bytes, hashlib.sha256).hexdigest()

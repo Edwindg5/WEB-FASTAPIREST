@@ -25,6 +25,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: cafe_api_web
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://cafe_user:cafe_secure_password_123@postgres:5432/cafe_monitoring_db
       SECRET_KEY: ${SECRET_KEY:-cambiar-esta-clave-en-produccion}
@@ -35,9 +37,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - .:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Redis (opcional, para caching/rate-limiting)
   redis:

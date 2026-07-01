@@ -1,15 +1,16 @@
 """Servicio de cifrado AES-256-GCM (Patrón: Encrypt Filter)."""
-import os
 import base64
 import secrets
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from app.core.config import settings
 
 
 class EncryptionService:
     """Cifra/descifra datos sensibles con AES-256-GCM."""
 
     def __init__(self):
-        key_b64 = os.getenv("ENCRYPTION_KEY")
+        key_b64 = settings.encryption_key
         if key_b64:
             self.key = base64.b64decode(key_b64)
         else:

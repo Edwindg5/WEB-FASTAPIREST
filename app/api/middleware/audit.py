@@ -21,15 +21,17 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         """Intercepta la request, ejecuta el endpoint y registra auditoría."""
-        
-        # Registrar entrada
-        request_body = await self._get_body(request)
-        
+
+        should_audit = self._should_audit(request.url.path)
+
+        # Registrar entrada (solo si la ruta requiere auditoría)
+        request_body = await self._get_body(request) if should_audit else ""
+
         # Ejecutar endpoint
         response = await call_next(request)
 
         # Registrar auditoría si aplica
-        if self._should_audit(request.url.path):
+        if should_audit:
             await self._log_audit(
                 method=request.method,
                 path=request.url.path,
