@@ -1,18 +1,21 @@
 """Router de pagos con Mercado Pago. Requiere JWT (excepto webhook)."""
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import Dict, Any
-from datetime import datetime, timedelta, timezone
+import asyncio
 import hashlib
 import hmac
 import os
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Any
 
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.core.logging import logger
+from app.core.security import get_current_user
 from app.infrastructure.db.database import get_db
+from app.infrastructure.db.models.audit_log import AuditLogModel
 from app.infrastructure.db.models.pago import PagoModel
 from app.infrastructure.db.models.suscripcion import SuscripcionModel
-from app.infrastructure.db.models.audit_log import AuditLogModel
-from app.core.security import get_current_user
 from app.api.v1.schemas.pago import (
     CrearPreferenciaRequest, PreferenciaResponse, PagoResponse, PagoListResponse,
 )
@@ -62,7 +65,18 @@ async def crear_preferencia(
         "auto_return": "approved",
     }
 
-    mp_response = sdk.preference().create(preference_data)
+    try:
+        mp_response = await asyncio.wait_for(
+            asyncio.to_thread(sdk.preference().create, preference_data),
+            timeout=8.0,
+        )
+    except asyncio.TimeoutError:
+        logger.warning("Timeout creando preferencia en MercadoPago")
+        raise HTTPException(status_code=504, detail="Timeout al conectar con MercadoPago")
+    except Exception as e:
+        logger.warning(f"Error creando preferencia en MercadoPago: {e}")
+        raise HTTPException(status_code=502, detail="Error al conectar con MercadoPago")
+
     response_data = mp_response.get("response", {})
     preference_id = response_data.get("id", "")
     init_point = response_data.get("init_point", "")
@@ -106,7 +120,6 @@ async def webhook_mercadopago(
         if not body_bytes:
             return {"status": "ignored", "reason": "empty body"}
     except Exception as e:
-        from app.core.logging import logger
         logger.warning(f"Webhook recibido con body inválido o desconexión: {e}")
         return {"status": "ignored", "reason": "invalid or empty body"}
 
@@ -133,7 +146,18 @@ async def webhook_mercadopago(
         return {"status": "ignored"}
 
     sdk = _get_mp_sdk()
-    mp_payment = sdk.payment().get(payment_id)
+    try:
+        mp_payment = await asyncio.wait_for(
+            asyncio.to_thread(sdk.payment().get, payment_id),
+            timeout=8.0,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(f"Timeout consultando pago {payment_id} en MercadoPago")
+        return {"status": "ignored", "reason": "mercadopago timeout"}
+    except Exception as e:
+        logger.warning(f"Error consultando pago {payment_id} en MercadoPago: {e}")
+        return {"status": "ignored", "reason": "mercadopago error"}
+
     payment_data = mp_payment.get("response", {})
     mp_status = payment_data.get("status", "")
     metadata = payment_data.get("metadata", {})
