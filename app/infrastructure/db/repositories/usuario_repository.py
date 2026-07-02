@@ -1,4 +1,5 @@
 """Repositorio SQLAlchemy para Usuario — usa columnas reales de PostgreSQL."""
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -20,10 +21,12 @@ class UsuarioRepository(IUsuarioRepository):
             rol=usuario.rol.value if hasattr(usuario.rol, "value") else usuario.rol,
             estado=usuario.estado.value if hasattr(usuario.estado, "value") else usuario.estado,
             telefono=usuario.telefono,
+            fecha_registro=usuario.fecha_registro or datetime.now(timezone.utc),
         )
         self.db.add(db_usuario)
         await self.db.flush()
         usuario.id_usuario = db_usuario.id_usuario
+        usuario.fecha_registro = db_usuario.fecha_registro
         return usuario
 
     async def get_by_id(self, id: int) -> Optional[Usuario]:

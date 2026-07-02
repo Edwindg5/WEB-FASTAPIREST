@@ -38,9 +38,19 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 async def get_db() -> AsyncSession:
-    """Dependency para inyectar sesión de base de datos en endpoints."""
+    """Dependency para inyectar sesión de base de datos en endpoints.
+
+    Comitea automáticamente si el endpoint termina sin excepciones; si algo fuera del
+    repositorio (p. ej. un HTTPException de validación) interrumpe el request, se hace
+    rollback. Los repositorios solo necesitan flush() para obtener IDs generados.
+    """
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 def get_db_sync() -> Session:
@@ -48,5 +58,9 @@ def get_db_sync() -> Session:
     db = SyncSessionLocal()
     try:
         yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
