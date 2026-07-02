@@ -7,14 +7,12 @@ from enum import Enum
 
 class RolUsuario(str, Enum):
     ADMINISTRADOR = "administrador"
-    SUPERVISOR = "supervisor"
     PRODUCTOR = "productor"
 
 
 class EstadoUsuario(str, Enum):
     ACTIVO = "activo"
     INACTIVO = "inactivo"
-    SUSPENDIDO = "suspendido"
 
 
 @dataclass
@@ -38,4 +36,4 @@ class Usuario:
         return self.is_activo()
 
     def puede_modificar_lotes(self) -> bool:
-        return self.is_activo() and self.rol in (RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
+        return self.is_activo() and self.rol == RolUsuario.ADMINISTRADOR

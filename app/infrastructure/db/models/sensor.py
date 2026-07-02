@@ -1,6 +1,9 @@
 """Modelo SQLAlchemy para Sensor ESP32 — columnas reales de PostgreSQL."""
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum as SAEnum
 from app.infrastructure.db.models.usuario import Base
+
+TipoSensorEnum = SAEnum("temperatura", "humedad", "ambos", name="tipo_sensor", create_type=False)
+EstadoSensorEnum = SAEnum("activo", "inactivo", "mantenimiento", name="estado_sensor", create_type=False)
 
 
 class SensorModel(Base):
@@ -8,9 +11,9 @@ class SensorModel(Base):
 
     id_sensor = Column(Integer, primary_key=True, index=True)
     mac_address = Column(String(17), unique=True, nullable=True, index=True)
-    tipo = Column(String(50), default="ambos")
+    tipo = Column(TipoSensorEnum, default="ambos")
     modelo = Column(String(100), default="ESP32-WROOM-32")
-    estado = Column(String(20), default="activo")
+    estado = Column(EstadoSensorEnum, default="activo")
     id_cola_mqtt = Column(String(255), nullable=True)
     provisioning_token = Column(String(255), unique=True, nullable=True)
     token_usado = Column(Boolean, default=False)

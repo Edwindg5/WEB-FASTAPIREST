@@ -84,12 +84,14 @@ async def crear_preferencia(
     if not preference_id:
         raise HTTPException(status_code=502, detail="Error al crear preferencia en MercadoPago")
 
-    # Crear o actualizar suscripción en estado pendiente
+    # Crear suscripción en estado 'prueba' mientras se confirma el pago
+    # (estado_suscripcion en Postgres no tiene un valor 'pendiente'; el webhook
+    # la pasa a 'activa' cuando Mercado Pago confirma el pago).
     sus_r = await db.execute(select(SuscripcionModel).where(SuscripcionModel.id_usuario == id_usuario))
     sus = sus_r.scalar_one_or_none()
     if not sus:
         sus = SuscripcionModel(
-            id_usuario=id_usuario, plan=body.plan, estado="pendiente",
+            id_usuario=id_usuario, plan=body.plan, estado="prueba",
             fecha_inicio=datetime.now(timezone.utc), lotes_max=1,
         )
         db.add(sus)

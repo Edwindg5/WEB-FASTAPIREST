@@ -1,6 +1,8 @@
 """Modelo SQLAlchemy para Alertas — columnas reales de PostgreSQL."""
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum as SAEnum
 from app.infrastructure.db.models.usuario import Base
+
+NivelSeveridadEnum = SAEnum("baja", "media", "alta", "critica", name="nivel_severidad", create_type=False)
 
 
 class AlertaModel(Base):
@@ -10,7 +12,7 @@ class AlertaModel(Base):
     id_lote = Column(Integer, ForeignKey("lotes_cafe.id_lote"), nullable=True)
     tipo_alerta = Column(String(100), nullable=True)
     mensaje = Column(Text, nullable=True)
-    nivel_severidad = Column(String(50), default="normal")
+    nivel_severidad = Column(NivelSeveridadEnum, default="media")
     atendida = Column(Boolean, default=False)
     fecha_generada = Column(DateTime, nullable=True)
     fecha_atencion = Column(DateTime, nullable=True)

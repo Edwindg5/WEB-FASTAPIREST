@@ -38,7 +38,7 @@ class EncryptionMiddleware(BaseHTTPMiddleware):
         try:
             from app.core.security import decode_token
             payload = decode_token(auth[7:])
-            return payload.get("role", "")  # "administrador" | "supervisor" | "productor"
+            return payload.get("role", "")  # "administrador" | "productor"
         except Exception:
             return ""
 

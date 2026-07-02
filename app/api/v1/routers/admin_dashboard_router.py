@@ -37,7 +37,7 @@ async def dashboard(
         await db.execute(select(func.count()).where(LoteCafeModel.estado == "en_proceso"))
     ).scalar_one()
     lotes_finalizados = (
-        await db.execute(select(func.count()).where(LoteCafeModel.estado == "completado"))
+        await db.execute(select(func.count()).where(LoteCafeModel.estado == "finalizado"))
     ).scalar_one()
 
     hoy = datetime.now(timezone.utc).date()
@@ -47,7 +47,7 @@ async def dashboard(
     total_alertas_hoy = alertas_hoy_r.scalar_one() or 0
 
     alertas_criticas_r = await db.execute(
-        text("SELECT COUNT(*) FROM alertas WHERE nivel_severidad='critico' AND atendida=false")
+        text("SELECT COUNT(*) FROM alertas WHERE nivel_severidad='critica' AND atendida=false")
     )
     alertas_criticas = alertas_criticas_r.scalar_one() or 0
 

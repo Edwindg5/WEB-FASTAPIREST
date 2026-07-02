@@ -1,6 +1,8 @@
 """Modelo SQLAlchemy para Pagos — columnas reales de PostgreSQL."""
-from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, Enum as SAEnum
 from app.infrastructure.db.models.usuario import Base
+
+EstadoPagoEnum = SAEnum("pendiente", "aprobado", "rechazado", "reembolsado", name="estado_pago", create_type=False)
 
 
 class PagoModel(Base):
@@ -11,7 +13,7 @@ class PagoModel(Base):
     id_suscripcion = Column(Integer, ForeignKey("suscripciones.id_suscripcion"), nullable=True)
     monto = Column(Numeric(10, 2), nullable=False)
     moneda = Column(String(3), default="MXN")
-    estado = Column(String(20), default="pendiente")
+    estado = Column(EstadoPagoEnum, default="pendiente")
     mp_preference_id = Column(String(255), nullable=True)
     mp_payment_id = Column(String(255), nullable=True)
     fecha_pago = Column(DateTime, nullable=True)
