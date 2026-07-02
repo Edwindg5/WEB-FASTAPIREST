@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 from typing import Dict, Any
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.models.usuario import UsuarioModel
@@ -40,7 +40,7 @@ async def dashboard(
         await db.execute(select(func.count()).where(LoteCafeModel.estado == "finalizado"))
     ).scalar_one()
 
-    hoy = datetime.now(timezone.utc).date()
+    hoy = datetime.utcnow().date()
     alertas_hoy_r = await db.execute(
         text("SELECT COUNT(*) FROM alertas WHERE DATE(fecha_generada) = :hoy"), {"hoy": hoy}
     )
@@ -54,7 +54,7 @@ async def dashboard(
     inferencias_r = await db.execute(text("SELECT COUNT(*) FROM predicciones"))
     total_inferencias = inferencias_r.scalar_one() or 0
 
-    hace_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    hace_24h = datetime.utcnow() - timedelta(hours=24)
     lecturas_r = await db.execute(
         text("SELECT COUNT(*) FROM lecturas_ambientales WHERE timestamp > :ts"), {"ts": hace_24h}
     )
@@ -83,7 +83,7 @@ async def estadisticas_secado(
     current_user: Dict[str, Any] = Depends(get_current_admin_user),
 ):
     dias = {"7d": 7, "30d": 30, "90d": 90}.get(periodo, 7)
-    desde = datetime.now(timezone.utc) - timedelta(days=dias)
+    desde = datetime.utcnow() - timedelta(days=dias)
 
     avg_r = await db.execute(
         text(

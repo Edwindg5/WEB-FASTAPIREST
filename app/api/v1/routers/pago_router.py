@@ -2,7 +2,7 @@
 import asyncio
 import hashlib
 import hmac
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -92,7 +92,7 @@ async def crear_preferencia(
     if not sus:
         sus = SuscripcionModel(
             id_usuario=id_usuario, plan=body.plan, estado="prueba",
-            fecha_inicio=datetime.now(timezone.utc), lotes_max=1,
+            fecha_inicio=datetime.utcnow(), lotes_max=1,
         )
         db.add(sus)
         await db.flush()
@@ -104,7 +104,7 @@ async def crear_preferencia(
         moneda="MXN",
         estado="pendiente",
         mp_preference_id=preference_id,
-        fecha_pago=datetime.now(timezone.utc),
+        fecha_pago=datetime.utcnow(),
     )
     db.add(pago)
     await db.commit()
@@ -188,7 +188,7 @@ async def webhook_mercadopago(
             pago = PagoModel(
                 id_usuario=int(id_usuario), monto=0, moneda="MXN",
                 estado="aprobado", mp_payment_id=payment_id,
-                fecha_pago=datetime.now(timezone.utc),
+                fecha_pago=datetime.utcnow(),
             )
             db.add(pago)
         await db.flush()
@@ -203,13 +203,13 @@ async def webhook_mercadopago(
         if sus:
             sus.plan = plan or sus.plan
             sus.estado = "activa"
-            sus.fecha_fin = datetime.now(timezone.utc) + timedelta(days=30)
+            sus.fecha_fin = datetime.utcnow() + timedelta(days=30)
             sus.lotes_max = lotes_max
         else:
             sus = SuscripcionModel(
                 id_usuario=int(id_usuario), plan=plan or "basico", estado="activa",
-                fecha_inicio=datetime.now(timezone.utc),
-                fecha_fin=datetime.now(timezone.utc) + timedelta(days=30),
+                fecha_inicio=datetime.utcnow(),
+                fecha_fin=datetime.utcnow() + timedelta(days=30),
                 lotes_max=lotes_max,
             )
             db.add(sus)
