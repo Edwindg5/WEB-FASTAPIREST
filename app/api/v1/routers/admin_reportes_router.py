@@ -9,7 +9,7 @@ import os
 import io
 
 from app.infrastructure.db.database import get_db
-from app.infrastructure.db.models.reporte import ReporteModel
+from app.infrastructure.db.models.reporte import ReporteModel, FormatoReporteEnum
 from app.infrastructure.db.models.lote_cafe import LoteCafeModel
 from app.infrastructure.db.models.usuario import UsuarioModel
 from app.core.security import get_current_admin_user
@@ -151,6 +151,12 @@ async def listar_reportes(
     db: AsyncSession = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_admin_user),
 ):
+    if formato and formato not in FormatoReporteEnum.enums:
+        raise HTTPException(
+            status_code=400,
+            detail=f"formato inválido: '{formato}'. Valores permitidos: {', '.join(FormatoReporteEnum.enums)}",
+        )
+
     query = select(ReporteModel)
     if formato:
         query = query.where(ReporteModel.formato == formato)

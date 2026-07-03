@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 from app.infrastructure.db.database import get_db
-from app.infrastructure.db.models.usuario import UsuarioModel
+from app.infrastructure.db.models.usuario import UsuarioModel, RolUsuarioEnum, EstadoUsuarioEnum
 from app.infrastructure.db.models.lote_cafe import LoteCafeModel
 from app.infrastructure.db.models.audit_log import AuditLogModel
 from app.core.security import get_current_admin_user
@@ -52,6 +52,17 @@ async def listar_usuarios(
     db: AsyncSession = Depends(get_db),
     current_user: Dict[str, Any] = Depends(get_current_admin_user),
 ):
+    if rol and rol not in RolUsuarioEnum.enums:
+        raise HTTPException(
+            status_code=400,
+            detail=f"rol inválido: '{rol}'. Valores permitidos: {', '.join(RolUsuarioEnum.enums)}",
+        )
+    if estado and estado not in EstadoUsuarioEnum.enums:
+        raise HTTPException(
+            status_code=400,
+            detail=f"estado inválido: '{estado}'. Valores permitidos: {', '.join(EstadoUsuarioEnum.enums)}",
+        )
+
     query = select(UsuarioModel)
     if rol:
         query = query.where(UsuarioModel.rol == rol)
