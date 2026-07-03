@@ -17,7 +17,8 @@ class SensorModel(Base):
     id_cola_mqtt = Column(String(255), nullable=True)
     provisioning_token = Column(String(255), unique=True, nullable=True)
     token_usado = Column(Boolean, default=False)
-    created_at = Column(DateTime, nullable=True)
+    fecha_registro = Column(DateTime, nullable=True)
+    ultima_conexion = Column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
         return f"<SensorModel(id_sensor={self.id_sensor}, mac={self.mac_address})>"

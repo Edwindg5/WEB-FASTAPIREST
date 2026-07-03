@@ -22,9 +22,9 @@ async def _audit(db, id_usuario, accion, entidad, id_entidad, ip, detalles=None)
     log = AuditLogModel(
         id_usuario=id_usuario,
         accion=accion,
-        entidad=entidad,
-        id_entidad=id_entidad,
-        ip_address=ip,
+        entidad_afectada=entidad,
+        id_entidad_afectada=id_entidad,
+        ip_origen=ip,
         detalles=detalles,
         fecha_hora=datetime.utcnow(),
     )

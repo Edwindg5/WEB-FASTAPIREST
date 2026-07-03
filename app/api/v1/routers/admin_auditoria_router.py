@@ -49,10 +49,10 @@ async def listar_auditoria(
                 "id_log": log.id_log,
                 "id_usuario": log.id_usuario,
                 "accion": log.accion,
-                "entidad": log.entidad,
-                "id_entidad": log.id_entidad,
+                "entidad": log.entidad_afectada,
+                "id_entidad": log.id_entidad_afectada,
                 "detalles": log.detalles,
-                "ip_address": log.ip_address,
+                "ip_address": log.ip_origen,
                 "fecha_hora": log.fecha_hora,
             }
             for log in logs

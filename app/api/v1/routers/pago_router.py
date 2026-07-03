@@ -215,8 +215,8 @@ async def webhook_mercadopago(
             db.add(sus)
 
         audit = AuditLogModel(
-            id_usuario=int(id_usuario), accion="pago_aprobado", entidad="pagos",
-            id_entidad=pago.id_pago, ip_address="mercadopago-webhook",
+            id_usuario=int(id_usuario), accion="pago_aprobado", entidad_afectada="pagos",
+            id_entidad_afectada=pago.id_pago, ip_origen="mercadopago-webhook",
             detalles={"plan": plan, "mp_payment_id": payment_id},
             fecha_hora=datetime.utcnow(),
         )

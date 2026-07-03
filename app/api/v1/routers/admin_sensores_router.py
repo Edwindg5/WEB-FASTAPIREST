@@ -27,9 +27,9 @@ async def _audit(db, id_usuario, accion, id_entidad, ip, detalles=None):
     log = AuditLogModel(
         id_usuario=id_usuario,
         accion=accion,
-        entidad="sensores",
-        id_entidad=id_entidad,
-        ip_address=ip,
+        entidad_afectada="sensores",
+        id_entidad_afectada=id_entidad,
+        ip_origen=ip,
         detalles=detalles,
         fecha_hora=datetime.utcnow(),
     )
@@ -55,7 +55,7 @@ def _to_response(s: SensorModel, lote_nombre: Optional[str] = None) -> AdminSens
         provisioning_token=s.provisioning_token,
         token_usado=s.token_usado or False,
         lote_nombre=lote_nombre,
-        created_at=s.created_at or datetime.utcnow(),
+        created_at=s.fecha_registro or datetime.utcnow(),
     )
 
 
@@ -78,7 +78,7 @@ async def crear_sensor(
         id_cola_mqtt=f"sensors/{body.mac_address}/data",
         provisioning_token=str(uuid.uuid4()),
         token_usado=False,
-        created_at=datetime.utcnow(),
+        fecha_registro=datetime.utcnow(),
     )
     db.add(sensor)
     await db.commit()

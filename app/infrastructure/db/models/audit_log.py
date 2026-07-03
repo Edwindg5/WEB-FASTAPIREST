@@ -9,10 +9,10 @@ class AuditLogModel(Base):
     id_log = Column(Integer, primary_key=True, index=True)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario"), nullable=True)
     accion = Column(String(255), nullable=False)
-    entidad = Column(String(100), nullable=True)
-    id_entidad = Column(Integer, nullable=True)
+    entidad_afectada = Column(String(100), nullable=True)
+    id_entidad_afectada = Column(Integer, nullable=True)
     detalles = Column(JSON, nullable=True)
-    ip_address = Column(String(45), nullable=True)
+    ip_origen = Column(String(45), nullable=True)
     fecha_hora = Column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
