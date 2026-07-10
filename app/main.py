@@ -15,6 +15,7 @@ from app.api.v1.routers import (
     admin_dashboard_router,
     admin_reportes_router,
     admin_auditoria_router,
+    admin_lotes_router,
     suscripcion_router,
     pago_router,
     seguridad_router,
@@ -63,6 +64,7 @@ app.include_router(admin_sensores_router.router, prefix="/api/v1")
 app.include_router(admin_dashboard_router.router, prefix="/api/v1")
 app.include_router(admin_reportes_router.router, prefix="/api/v1")
 app.include_router(admin_auditoria_router.router, prefix="/api/v1")
+app.include_router(admin_lotes_router.router, prefix="/api/v1")
 
 # Pagos y suscripciones — Parte 3
 app.include_router(suscripcion_router.router, prefix="/api/v1")

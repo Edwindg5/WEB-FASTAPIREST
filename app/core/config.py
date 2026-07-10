@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # Cifrado AES-256
     encryption_key: Optional[str] = None
 
+    # Lotes — usuario placeholder para lotes creados desde admin aún sin reclamar
+    placeholder_lote_email: str = "sin-asignar@kajve.internal"
+
     class Config:
         env_file = ".env"
         case_sensitive = False
