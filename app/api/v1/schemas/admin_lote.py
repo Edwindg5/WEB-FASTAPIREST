@@ -31,3 +31,13 @@ class AdminLoteResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class AdminLoteActualResponse(BaseModel):
+    id_lote: int
+    codigo_qr: Optional[str]
+    nombre_lote: Optional[str]
+    estado: str
+
+    class Config:
+        from_attributes = True

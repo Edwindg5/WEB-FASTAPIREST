@@ -19,6 +19,7 @@ from app.api.v1.schemas.admin_sensor import (
     AdminSensorCreate, AdminSensorUpdate, AdminSensorResponse,
     AdminSensorListResponse, AdminSensorDetalle, QRResponse,
 )
+from app.api.v1.schemas.admin_lote import AdminLoteActualResponse
 
 router = APIRouter(prefix="/admin/sensores", tags=["Admin — Sensores"])
 
@@ -194,3 +195,31 @@ async def generar_qr_sensor(
     buffer.seek(0)
     b64 = base64.b64encode(buffer.read()).decode()
     return QRResponse(qr_base64=f"data:image/png;base64,{b64}")
+
+
+@router.get("/{id}/lote-actual", response_model=AdminLoteActualResponse)
+async def lote_actual_sensor(
+    id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_admin_user),
+):
+    result = await db.execute(select(SensorModel).where(SensorModel.id_sensor == id))
+    if result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Sensor no encontrado")
+
+    lote_r = await db.execute(
+        select(LoteCafeModel)
+        .where(LoteCafeModel.id_sensor == id, LoteCafeModel.estado == "en_proceso")
+        .order_by(LoteCafeModel.created_at.desc())
+        .limit(1)
+    )
+    lote = lote_r.scalars().first()
+    if lote is None:
+        raise HTTPException(status_code=404, detail="No hay lote activo para este sensor")
+
+    return AdminLoteActualResponse(
+        id_lote=lote.id_lote,
+        codigo_qr=lote.codigo_qr,
+        nombre_lote=lote.nombre_lote,
+        estado=lote.estado,
+    )
