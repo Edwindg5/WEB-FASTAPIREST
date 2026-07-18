@@ -146,9 +146,12 @@ async def estadisticas_sensores(
     items = []
     for s in sensores:
         lote_r = await db.execute(
-            select(LoteCafeModel.nombre_lote).where(LoteCafeModel.id_sensor == s.id_sensor)
+            select(LoteCafeModel.nombre_lote)
+            .where(LoteCafeModel.id_sensor == s.id_sensor)
+            .order_by(LoteCafeModel.created_at.desc())
+            .limit(1)
         )
-        lote_nombre = lote_r.scalar_one_or_none()
+        lote_nombre = lote_r.scalar()
 
         ultima_r = await db.execute(
             text("SELECT MAX(timestamp) FROM lecturas_ambientales WHERE id_sensor = :sid"),
