@@ -23,6 +23,12 @@ async def dashboard(
     usuarios_activos = (
         await db.execute(select(func.count()).where(UsuarioModel.estado == "activo"))
     ).scalar_one()
+    total_productores = (
+        await db.execute(select(func.count()).where(UsuarioModel.rol == "productor"))
+    ).scalar_one()
+    total_usuarios_premium = (
+        await db.execute(select(func.count()).where(UsuarioModel.es_premium.is_(True)))
+    ).scalar_one()
 
     total_sensores = (await db.execute(select(func.count()).select_from(SensorModel))).scalar_one()
     sensores_activos = (
@@ -63,6 +69,8 @@ async def dashboard(
     return {
         "total_usuarios": total_usuarios,
         "usuarios_activos": usuarios_activos,
+        "total_productores": total_productores,
+        "total_usuarios_premium": total_usuarios_premium,
         "total_sensores": total_sensores,
         "sensores_activos": sensores_activos,
         "sensores_mantenimiento": sensores_mantenimiento,
@@ -73,6 +81,58 @@ async def dashboard(
         "alertas_criticas_sin_atender": alertas_criticas,
         "total_inferencias_ml": total_inferencias,
         "lecturas_ultimas_24h": lecturas_24h,
+    }
+
+
+@router.get("/estadisticas/usuarios", summary="Usuarios registrados a lo largo del tiempo + premium vs normal")
+async def estadisticas_usuarios(
+    dias: int = Query(30, ge=7, le=365, description="Tamaño de la ventana de la serie de tiempo"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_admin_user),
+):
+    """Alimenta dos gráficas del panel admin:
+
+    - dashboard: usuarios creados por día (serie de tiempo, últimos `dias`).
+    - estadisticas: pastel de usuarios premium vs normales.
+    """
+    desde = datetime.utcnow() - timedelta(days=dias)
+
+    serie_r = await db.execute(
+        text(
+            "SELECT DATE(fecha_registro) AS dia, COUNT(*) AS cantidad "
+            "FROM usuarios "
+            "WHERE fecha_registro >= :desde "
+            "GROUP BY DATE(fecha_registro) "
+            "ORDER BY dia"
+        ),
+        {"desde": desde},
+    )
+    por_dia = {row.dia.isoformat(): row.cantidad for row in serie_r.all()}
+
+    # Rellenamos los días sin registros con 0 para que la gráfica no tenga huecos.
+    serie = []
+    for i in range(dias, -1, -1):
+        fecha = (datetime.utcnow() - timedelta(days=i)).date()
+        clave = fecha.isoformat()
+        serie.append({"fecha": clave, "cantidad": por_dia.get(clave, 0)})
+
+    total_premium = (
+        await db.execute(select(func.count()).where(UsuarioModel.es_premium.is_(True)))
+    ).scalar_one()
+    total_normales = (
+        await db.execute(select(func.count()).where(UsuarioModel.es_premium.is_(False)))
+    ).scalar_one()
+    total_productores = (
+        await db.execute(select(func.count()).where(UsuarioModel.rol == "productor"))
+    ).scalar_one()
+    total_administradores = (
+        await db.execute(select(func.count()).where(UsuarioModel.rol == "administrador"))
+    ).scalar_one()
+
+    return {
+        "serie_tiempo": serie,
+        "premium_vs_normal": {"premium": total_premium, "normal": total_normales},
+        "roles": {"productor": total_productores, "administrador": total_administradores},
     }
 
 

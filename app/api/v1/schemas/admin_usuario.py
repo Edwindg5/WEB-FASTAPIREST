@@ -31,3 +31,12 @@ class AdminUsuarioListResponse(BaseModel):
 
 class AdminUsuarioEstadoUpdate(BaseModel):
     estado: str = Field(..., pattern="^(activo|inactivo)$")
+
+
+class AdminUsuarioUpdate(BaseModel):
+    """Body para PUT /admin/usuarios/{id}: edición completa de datos del usuario."""
+    nombre: Optional[str] = Field(None, min_length=1, max_length=150)
+    email: Optional[str] = Field(None, min_length=3, max_length=150)
+    rol: Optional[str] = None
+    telefono: Optional[str] = Field(None, max_length=20)
+    password: Optional[str] = Field(None, min_length=6)

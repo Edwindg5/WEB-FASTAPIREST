@@ -1,5 +1,5 @@
 """Modelo SQLAlchemy para Usuario — columnas reales de PostgreSQL."""
-from sqlalchemy import Column, Integer, String, DateTime, Enum as SAEnum
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum as SAEnum
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -19,6 +19,8 @@ class UsuarioModel(Base):
     estado = Column(EstadoUsuarioEnum, nullable=False, default="activo")
     telefono = Column(String(20), nullable=True)
     fecha_registro = Column(DateTime, nullable=True)
+    es_premium = Column(Boolean, nullable=False, default=False)
+    premium_hasta = Column(DateTime, nullable=True)
 
     def __repr__(self) -> str:
         return f"<UsuarioModel(id_usuario={self.id_usuario}, email={self.email}, rol={self.rol})>"

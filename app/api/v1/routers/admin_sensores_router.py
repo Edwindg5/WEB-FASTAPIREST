@@ -13,15 +13,23 @@ import qrcode
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.models.sensor import SensorModel, EstadoSensorEnum
 from app.infrastructure.db.models.lote_cafe import LoteCafeModel
+from app.infrastructure.db.models.usuario import UsuarioModel
 from app.infrastructure.db.models.audit_log import AuditLogModel
 from app.core.security import get_current_admin_user
 from app.api.v1.schemas.admin_sensor import (
     AdminSensorCreate, AdminSensorUpdate, AdminSensorResponse,
     AdminSensorListResponse, AdminSensorDetalle, QRResponse,
+    AdminSensorAltaDirecta, AdminSensorAltaDirectaResponse,
 )
 from app.api.v1.schemas.admin_lote import AdminLoteActualResponse
 
 router = APIRouter(prefix="/admin/sensores", tags=["Admin — Sensores"])
+
+# id_usuario "placeholder" que usa trg_sensor_crea_lote_placeholder para el
+# lote temporal "Sin vincular - <id>" que se crea al insertar cualquier
+# sensor nuevo. Coincide con el usuario placeholder real de la BD (ver
+# alta_esp32_kajve-D8463591.sql). Si en algún momento cambia, ajustar aquí.
+ID_USUARIO_PLACEHOLDER = 10
 
 
 async def _audit(db, id_usuario, accion, id_entidad, ip, detalles=None):
@@ -91,6 +99,112 @@ async def crear_sensor(
         {"mac_address": body.mac_address, "tipo": body.tipo, "modelo": body.modelo},
     )
     return _to_response(sensor)
+
+
+@router.post("/alta-directa", response_model=AdminSensorAltaDirectaResponse, status_code=status.HTTP_201_CREATED)
+async def alta_directa_sensor(
+    body: AdminSensorAltaDirecta,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(get_current_admin_user),
+):
+    """Da de alta un ESP32 por su identificador y lo asigna de inmediato a
+    un usuario real (sin pasar por "sin vincular" + reclamar por QR).
+
+    Replica a mano, vía ORM, el mismo flujo de 2 pasos que ya hacen los
+    triggers de BD (trg_sensor_crea_lote_placeholder / trg_lote_reemplaza_placeholder):
+    1) insertar el sensor -> el trigger crea el lote placeholder bajo
+       ID_USUARIO_PLACEHOLDER.
+    2) insertar el lote real para `id_usuario` -> el trigger cancela el
+       placeholder del paso 1.
+    Al final, además, se verifica y cancela cualquier placeholder que haya
+    quedado activo para este sensor por si los triggers no estuvieran
+    presentes en el entorno actual (red de seguridad, no reemplaza los
+    triggers).
+    """
+    identificador = body.identificador.strip()
+    if not identificador:
+        raise HTTPException(status_code=400, detail="El identificador del ESP32 no puede estar vacío")
+
+    existing = await db.execute(select(SensorModel).where(SensorModel.mac_address == identificador))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail=f"Ya existe un sensor con el identificador '{identificador}'")
+
+    usuario_r = await db.execute(select(UsuarioModel).where(UsuarioModel.id_usuario == body.id_usuario))
+    usuario = usuario_r.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="El usuario indicado no existe")
+    if body.id_usuario == ID_USUARIO_PLACEHOLDER:
+        raise HTTPException(status_code=400, detail="No puedes asignar el sensor al usuario placeholder")
+
+    try:
+        sensor = SensorModel(
+            mac_address=identificador,
+            id_cola_mqtt=identificador,
+            tipo=body.tipo,
+            modelo=body.modelo,
+            estado="activo",
+            provisioning_token=str(uuid.uuid4()),
+            token_usado=True,
+            fecha_registro=datetime.utcnow(),
+            mide_viento=body.mide_viento,
+            mide_radiacion=body.mide_radiacion,
+            mide_humedad_grano=body.mide_humedad_grano,
+        )
+        db.add(sensor)
+        await db.flush()  # asigna id_sensor y dispara trg_sensor_crea_lote_placeholder
+
+        lote = LoteCafeModel(
+            id_usuario=body.id_usuario,
+            id_sensor=sensor.id_sensor,
+            nombre_lote=body.nombre_lote or f"Lote {identificador}",
+            variedad=body.variedad,
+            tipo_proceso=body.tipo_proceso,
+            ubicacion=body.ubicacion,
+            codigo_qr=str(uuid.uuid4()),
+            estado="en_proceso",
+            created_at=datetime.utcnow(),
+        )
+        db.add(lote)
+        await db.flush()  # dispara trg_lote_reemplaza_placeholder
+
+        # Red de seguridad: si por lo que sea el placeholder no se canceló
+        # solo (p. ej. el trigger no existe en este entorno), lo cancelamos
+        # a mano para no dejar un lote "activo" duplicado y huérfano.
+        await db.execute(
+            text(
+                "UPDATE lotes_cafe SET estado = 'cancelado' "
+                "WHERE id_sensor = :sid AND id_usuario = :placeholder "
+                "AND id_lote != :real_lote_id AND estado != 'cancelado'"
+            ),
+            {"sid": sensor.id_sensor, "placeholder": ID_USUARIO_PLACEHOLDER, "real_lote_id": lote.id_lote},
+        )
+
+        await db.commit()
+        await db.refresh(sensor)
+        await db.refresh(lote)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="No se pudo dar de alta el sensor. Verifica el identificador y el usuario.",
+        ) from exc
+
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    await _audit(
+        db, int(current_user.get("sub")), "alta_directa_sensor", sensor.id_sensor, ip,
+        {"identificador": identificador, "id_usuario": body.id_usuario, "id_lote": lote.id_lote},
+    )
+
+    return AdminSensorAltaDirectaResponse(
+        sensor=_to_response(sensor, lote.nombre_lote),
+        id_lote=lote.id_lote,
+        codigo_qr=lote.codigo_qr,
+        nombre_lote=lote.nombre_lote,
+        estado_lote=lote.estado,
+    )
 
 
 @router.get("", response_model=AdminSensorListResponse)

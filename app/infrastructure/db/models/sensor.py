@@ -19,6 +19,9 @@ class SensorModel(Base):
     token_usado = Column(Boolean, default=False)
     fecha_registro = Column(DateTime, nullable=True)
     ultima_conexion = Column(DateTime, nullable=True)
+    mide_viento = Column(Boolean, default=False)
+    mide_radiacion = Column(Boolean, default=False)
+    mide_humedad_grano = Column(Boolean, default=False)
 
     def __repr__(self) -> str:
         return f"<SensorModel(id_sensor={self.id_sensor}, mac={self.mac_address})>"
